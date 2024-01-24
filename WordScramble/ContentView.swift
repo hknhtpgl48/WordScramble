@@ -14,6 +14,7 @@ struct ContentView: View {
     @State private var errorTitle = ""
     @State private var errorMessage = ""
     @State private var showingError = false
+    @State private var score = 0
     var body: some View {
         NavigationStack {
             List {
@@ -29,12 +30,20 @@ struct ContentView: View {
                         }
                     }
                 }
+                Section("Your Score") {
+                    Text("Your Score: \(score)")
+                        .foregroundStyle(.red)
+                        .font(.title.bold())
+                }
             }
             .navigationTitle(rootWord)
             .onSubmit(addNewWord)
             .onAppear(perform: startGame)
             .alert(errorTitle, isPresented: $showingError) {} message: {
                 Text(errorMessage)
+            }
+            .toolbar {
+                Button("Restart", action: startGame)
             }
         }
     }
@@ -54,8 +63,17 @@ struct ContentView: View {
             wordError(title: "Word not recognized", message: "You cant just make them up, you know!")
             return
         }
+        guard isLongEnough(word: answer) else {
+            wordError(title: "Word is too short", message: "You cant give less then 3 letters")
+            return
+        }
+        guard isSameWithRoot(word: answer) else {
+            wordError(title: "Word is same with '\(rootWord)'", message: "You cant give same name as '\(rootWord)'")
+            return
+        }
         withAnimation {
             usedWords.insert(answer, at: 0)
+            score += answer.count
         }
         newWord = ""
     }
@@ -65,6 +83,8 @@ struct ContentView: View {
             if let startWords = try? String(contentsOf: startWordsUrl) {
                 let allWords = startWords.components(separatedBy: "\n")
                 rootWord = allWords.randomElement() ?? "quaresma"
+                usedWords.removeAll()
+                score = 0
                 return
             }
         }
@@ -92,6 +112,14 @@ struct ContentView: View {
         let range = NSRange(location: 0, length: word.utf16.count)
         let misspelledRange = checker.rangeOfMisspelledWord(in: word, range: range, startingAt: 0, wrap: false, language: "en")
         return misspelledRange.location == NSNotFound
+    }
+
+    func isLongEnough(word: String) -> Bool {
+        !(word.count < 3)
+    }
+
+    func isSameWithRoot(word: String) -> Bool {
+        !(word == rootWord)
     }
 
     func wordError(title: String, message: String) {
